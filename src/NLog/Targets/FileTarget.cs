@@ -31,6 +31,8 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 // 
 
+using System.Linq;
+
 namespace NLog.Targets
 {
     using System;
@@ -84,21 +86,23 @@ namespace NLog.Targets
 
             public int MaxArchiveFileToKeep { get; set; }
 
+            /// <returns><c>true</c> if the file has been moved successfully</returns>
             [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes")]
-            public void AddToArchive(string archiveFileName, string fileName, bool createDirectoryIfNotExists)
+            public bool AddToArchive(string archiveFileName, string fileName, bool createDirectoryIfNotExists)
             {
+
                 if (MaxArchiveFileToKeep < 1)
                 {
                     InternalLogger.Warn("AddToArchive is called. Even though the MaxArchiveFiles is set to less than 1");
 
-                    return;
+                    return false;
                 }
 
                 if (!File.Exists(fileName))
                 {
                     InternalLogger.Error("Error while trying to archive, Source File : {0} Not found.", fileName);
 
-                    return;
+                    return false;
                 }
 
                 while (archiveFileEntryQueue.Count >= MaxArchiveFileToKeep)
@@ -169,6 +173,7 @@ namespace NLog.Targets
                 }
 
                 archiveFileEntryQueue.Enqueue(archiveFileName);
+                return true;
             }
         }
 
@@ -246,6 +251,17 @@ namespace NLog.Targets
         /// <docgen category='Output Options' order='10' />
         [DefaultValue(false)]
         public bool DeleteOldFileOnStartup { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to archive old log file on startup.
+        /// </summary>
+        /// <remarks>
+        /// This option works only when the "FileName" parameter denotes a single file.
+        /// After archiving the old file, the current log file will be empty.
+        /// </remarks>
+        /// <docgen category='Output Options' order='10' />
+        [DefaultValue(false)]
+        public bool ArchiveOldFileOnStartup { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether to replace file contents on each write instead of appending log message at the end.
@@ -715,7 +731,11 @@ namespace NLog.Targets
         /// <param name="logEvent">The logging event.</param>
         protected override void Write(LogEventInfo logEvent)
         {
+#if !SILVERLIGHT
+            string fileName = CleanupFileName(this.FileName.Render(logEvent));
+#else
             string fileName = this.FileName.Render(logEvent);
+#endif
             byte[] bytes = this.GetBytesToWrite(logEvent);
 
             if (this.ShouldAutoArchive(fileName, logEvent, bytes.Length))
@@ -746,7 +766,11 @@ namespace NLog.Targets
 
                 foreach (var bucket in buckets)
                 {
+#if !SILVERLIGHT
+                    string fileName = CleanupFileName(bucket.Key);
+#else
                     string fileName = bucket.Key;
+#endif
 
                     ms.SetLength(0);
                     ms.Position = 0;
@@ -877,7 +901,7 @@ namespace NLog.Targets
 
             try
             {
-                File.Move(fileName, newFileName);
+                MoveFileToArchive(fileName, newFileName);
             }
             catch (IOException)
             {
@@ -887,7 +911,7 @@ namespace NLog.Targets
                     Directory.CreateDirectory(dir);
                 }
 
-                File.Move(fileName, newFileName);
+                MoveFileToArchive(fileName, newFileName);
             }
         }
 
@@ -957,7 +981,25 @@ namespace NLog.Targets
             }
 
             string newFileName = ReplaceNumber(pattern, nextNumber);
-            File.Move(fileName, newFileName);
+            MoveFileToArchive(fileName, newFileName);
+        }
+
+        private void MoveFileToArchive(string existingFileName, string archiveFileName)
+        {
+            File.Move(existingFileName, archiveFileName);
+            var fileName = Path.GetFileName(existingFileName);
+            if (fileName == null) return;
+            // When the file has been moved, the original filename is 
+            // no longer one of the initializedFiles. The initializedFilesCounter
+            // should be left alone, the amount is still valid.
+            if (this.initializedFiles.ContainsKey(fileName))
+            {
+                this.initializedFiles.Remove(fileName);
+            }
+            else if (this.initializedFiles.ContainsKey(existingFileName))
+            {
+                this.initializedFiles.Remove(existingFileName);
+            }
         }
 
 #if !NET_CF
@@ -970,38 +1012,34 @@ namespace NLog.Targets
             string fileNameMask = baseNamePattern.Substring(0, firstPart) + "*" + baseNamePattern.Substring(lastPart);
             string dirName = Path.GetDirectoryName(Path.GetFullPath(pattern));
             string dateFormat = GetDateFormatString(this.ArchiveDateFormat);
-            int fileIndex = 0;
 
             try
             {
-
+                DirectoryInfo directoryInfo = new DirectoryInfo(dirName);
 #if SILVERLIGHT
-                List<string> files = Directory.EnumerateFiles(dirName, fileNameMask).ToList();
+                List<string> files = directoryInfo.EnumerateFiles(fileNameMask).OrderBy(n => n.CreationTime).Select(n => n.FullName).ToList();
 #else
-                List<string> files = Directory.GetFiles(dirName, fileNameMask).ToList();
+                List<string> files = directoryInfo.GetFiles(fileNameMask).OrderBy(n => n.CreationTime).Select(n => n.FullName).ToList();
 #endif
-                Dictionary<DateTime, string> filesByDate = new Dictionary<DateTime, string>();
+                List<string> filesByDate = new List<string>();
 
-                foreach (string file in files)
+                for (int index = 0; index < files.Count; index++)
                 {
-                    string archiveFileName = Path.GetFileName(file);
+                    string archiveFileName = Path.GetFileName(files[index]);
                     string datePart = archiveFileName.Substring(fileNameMask.LastIndexOf('*'), dateFormat.Length);
-                    DateTime fileDate = DateTime.Now;
+                    DateTime fileDate = DateTime.MinValue;
                     if (DateTime.TryParseExact(datePart, dateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate))
                     {
-                        filesByDate.Add(fileDate, file);
+                        filesByDate.Add(files[index]);
                     }
                 }
 
-
-                foreach (KeyValuePair<DateTime, string> file in filesByDate)
+                for (int fileIndex = 0; fileIndex < filesByDate.Count; fileIndex++)
                 {
                     if (fileIndex > files.Count - this.MaxArchiveFiles)
                         break;
 
-                    File.Delete(file.Value);
-
-                    fileIndex++;
+                    File.Delete(filesByDate[fileIndex]);
                 }
             }
             catch (DirectoryNotFoundException)
@@ -1011,7 +1049,7 @@ namespace NLog.Targets
 
             DateTime newFileDate = GetArchiveDate();
             string newFileName = Path.Combine(dirName, fileNameMask.Replace("*", newFileDate.ToString(dateFormat)));
-            File.Move(fileName, newFileName);
+            MoveFileToArchive(fileName, newFileName);
         }
 #endif
 
@@ -1106,7 +1144,9 @@ namespace NLog.Targets
 
             if (!IsContainValidNumberPatternForReplacement(fileNamePattern))
             {
-                dynamicArchiveFileHandler.AddToArchive(fileNamePattern, fi.FullName, CreateDirs);
+                if (dynamicArchiveFileHandler.AddToArchive(fileNamePattern, fi.FullName, CreateDirs))
+                    if (this.initializedFiles.ContainsKey(fi.FullName))
+                        this.initializedFiles.Remove(fi.FullName);
             }
             else
             {
@@ -1245,6 +1285,19 @@ namespace NLog.Targets
             {
                 if (!this.initializedFiles.ContainsKey(fileName))
                 {
+                    if (this.ArchiveOldFileOnStartup)
+                    {
+                        try
+                        {
+                            this.DoAutoArchive(fileName, null);
+                        }
+                        catch (Exception exception)
+                        {
+                            if (exception.MustBeRethrown())
+                                throw;
+                            InternalLogger.Warn("Unable to archive old log file '{0}': {1}", fileName, exception);
+                        }
+                    }
                     if (this.DeleteOldFileOnStartup)
                     {
                         try
@@ -1439,5 +1492,18 @@ namespace NLog.Targets
                 }
             }
         }
+
+#if !SILVERLIGHT
+        private static string CleanupFileName(string fileName)
+        {
+            var lastDirSeparator =
+                fileName.LastIndexOfAny(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar });
+
+            var fileName1 = fileName.Substring(lastDirSeparator + 1);
+            var dirName = lastDirSeparator > 0 ? fileName.Substring(0, lastDirSeparator) : string.Empty;
+            fileName1 = Path.GetInvalidFileNameChars().Aggregate(fileName1, (current, c) => current.Replace(c, '_'));
+            return Path.Combine(dirName, fileName1);
+        }
+#endif
     }
 }

@@ -31,6 +31,8 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 // 
 
+using System.Security.Permissions;
+
 namespace NLog.UnitTests
 {
     using System;
@@ -65,10 +67,40 @@ using System.Xml.Linq;
             Assert.Equal(msg, debugTarget.LastMessage);
         }
 
+        public void AssertDebugLastMessageContains(string targetName, string msg)
+        {
+            NLog.Targets.DebugTarget debugTarget = (NLog.Targets.DebugTarget)LogManager.Configuration.FindTargetByName(targetName);
+
+            // Console.WriteLine("lastmsg: {0}", debugTarget.LastMessage);
+
+            Assert.NotNull(debugTarget);
+            Assert.True(debugTarget.LastMessage.Contains(msg), "Unexpected last message value on '" + targetName + "'");
+        }
+
         public string GetDebugLastMessage(string targetName)
         {
             var debugTarget = (NLog.Targets.DebugTarget)LogManager.Configuration.FindTargetByName(targetName);
             return debugTarget.LastMessage;
+        }
+
+        public void AssertFileContentsStartsWith(string fileName, string contents, Encoding encoding)
+        {
+            FileInfo fi = new FileInfo(fileName);
+            if (!fi.Exists)
+                Assert.True(true, "File '" + fileName + "' doesn't exist.");
+
+            byte[] encodedBuf = encoding.GetBytes(contents);
+            Assert.True(encodedBuf.Length <= fi.Length);
+            byte[] buf = new byte[encodedBuf.Length];
+            using (FileStream fs = new FileStream(fileName, FileMode.Open, FileAccess.Read))
+            {
+                fs.Read(buf, 0, buf.Length);
+            }
+
+            for (int i = 0; i < buf.Length; ++i)
+            {
+                Assert.Equal(encodedBuf[i], buf[i]);
+            }
         }
 
         public void AssertFileContents(string fileName, string contents, Encoding encoding)

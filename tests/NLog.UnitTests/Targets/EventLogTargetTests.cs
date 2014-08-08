@@ -1,4 +1,4 @@
-// 
+﻿// 
 // Copyright (c) 2004-2011 Jaroslaw Kowalski <jaak@jkowalski.net>
 // 
 // All rights reserved.
@@ -31,40 +31,42 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 // 
 
-#if !SILVERLIGHT
+#if !SILVERLIGHT && !MONO
 
-namespace NLog.UnitTests.LayoutRenderers
+namespace NLog.UnitTests.Targets
 {
+    using System.Diagnostics;
+    using NLog.Config;
+    using NLog.Targets;
     using System;
-    using System.IO;
+    using System.Linq;
     using Xunit;
 
-    public class BaseDirTests : NLogTestBase
+    public class EventLogTargetTests : NLogTestBase
     {
-        private string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-
         [Fact]
-        public void BaseDirTest()
+        public void WriteEventLogEntry()
         {
-            AssertLayoutRendererOutput("${basedir}", baseDir);
-        }
+            var target = new EventLogTarget();
+            //The Log to write to is intentionally lower case!!
+            target.Log = "application";  
 
-        [Fact]
-        public void BaseDirCombineTest()
-        {
-            AssertLayoutRendererOutput("${basedir:dir=aaa}", Path.Combine(baseDir, "aaa"));
-        }
+            SimpleConfigurator.ConfigureForTargetLogging(target, LogLevel.Debug);
+            var logger = LogManager.GetLogger("WriteEventLogEntry");
+            var el = new EventLog(target.Log);
 
-        [Fact]
-        public void BaseDirFileCombineTest()
-        {
-            AssertLayoutRendererOutput("${basedir:file=aaa.txt}", Path.Combine(baseDir, "aaa.txt"));
-        }
+            var latestEntryTime  = el.Entries.Cast<EventLogEntry>().Max(n => n.TimeWritten);
 
-        [Fact]
-        public void BaseDirDirFileCombineTest()
-        {
-            AssertLayoutRendererOutput("${basedir:dir=aaa:file=bbb.txt}", Path.Combine(baseDir, "aaa", "bbb.txt"));
+
+            var testValue = Guid.NewGuid();
+            logger.Debug(testValue.ToString());
+            
+            var entryExists = (from entry in el.Entries.Cast<EventLogEntry>()
+                                where entry.TimeWritten >= latestEntryTime
+                                && entry.Message.Contains(testValue.ToString())
+                                select entry).Any();
+
+            Assert.True(entryExists);
         }
     }
 }

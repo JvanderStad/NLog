@@ -1,4 +1,4 @@
-// 
+﻿// 
 // Copyright (c) 2004-2011 Jaroslaw Kowalski <jaak@jkowalski.net>
 // 
 // All rights reserved.
@@ -31,42 +31,21 @@
 // THE POSSIBILITY OF SUCH DAMAGE.
 // 
 
-#if !SILVERLIGHT
-
-namespace NLog.UnitTests.LayoutRenderers
+namespace NLog.Config
 {
     using System;
-    using System.IO;
-    using Xunit;
 
-    public class BaseDirTests : NLogTestBase
+    /// <summary>
+    /// Indicates NLog should not scan this property during configuration.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Property)]
+    public sealed class NLogConfigurationIgnorePropertyAttribute : Attribute
     {
-        private string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-
-        [Fact]
-        public void BaseDirTest()
+        /// <summary>
+        /// Initializes a new instance of the <see cref="NLogConfigurationIgnorePropertyAttribute"/> class.
+        /// </summary>
+        public NLogConfigurationIgnorePropertyAttribute()
         {
-            AssertLayoutRendererOutput("${basedir}", baseDir);
-        }
-
-        [Fact]
-        public void BaseDirCombineTest()
-        {
-            AssertLayoutRendererOutput("${basedir:dir=aaa}", Path.Combine(baseDir, "aaa"));
-        }
-
-        [Fact]
-        public void BaseDirFileCombineTest()
-        {
-            AssertLayoutRendererOutput("${basedir:file=aaa.txt}", Path.Combine(baseDir, "aaa.txt"));
-        }
-
-        [Fact]
-        public void BaseDirDirFileCombineTest()
-        {
-            AssertLayoutRendererOutput("${basedir:dir=aaa:file=bbb.txt}", Path.Combine(baseDir, "aaa", "bbb.txt"));
         }
     }
 }
-
-#endif

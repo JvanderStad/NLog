@@ -37,6 +37,9 @@ namespace NLog
     using System.ComponentModel;
     using NLog.Internal;
     using JetBrains.Annotations;
+#if ASYNC_SUPPORTED
+    using System.Threading.Tasks;
+#endif
 
     /// <summary>
     /// Provides logging interface and utility functions.
@@ -229,12 +232,10 @@ namespace NLog
         /// <param name="level">The log level.</param>
         /// <param name="message">A <see langword="string" /> to be written.</param>
         /// <param name="exception">An exception to be logged.</param>
+        [Obsolete("Use Log(LogLevel, String, Exception) method instead.")]
         public void LogException(LogLevel level, [Localizable(false)] string message, Exception exception)
         {
-            if (this.IsEnabled(level))
-            {
-                this.WriteToTargets(level, message, exception);
-            }
+            this.Log(level, message, exception);
         }
 
         /// <summary>
@@ -281,6 +282,20 @@ namespace NLog
         }
 
         /// <summary>
+        /// Writes the diagnostic message and exception at the specified level.
+        /// </summary>
+        /// <param name="level">The log level.</param>
+        /// <param name="message">A <see langword="string" /> to be written.</param>
+        /// <param name="exception">An exception to be logged.</param>
+        public void Log(LogLevel level, [Localizable(false)] string message, Exception exception)
+        {
+            if (this.IsEnabled(level))
+            {
+                this.WriteToTargets(level, message, exception);
+            }
+        }
+
+        /// <summary>
         /// Writes the diagnostic message at the specified level using the specified parameter and formatting it with the supplied format provider.
         /// </summary>
         /// <typeparam name="TArgument">The type of the argument.</typeparam>
@@ -312,7 +327,7 @@ namespace NLog
                 var exceptionCandidate = argument as Exception;
                 if (exceptionCandidate != null)
                 {
-                    this.LogException(level, message, exceptionCandidate);
+                    this.Log(level, message, exceptionCandidate);
                     return;
                 }
 
@@ -452,12 +467,10 @@ namespace NLog
         /// </summary>
         /// <param name="message">A <see langword="string" /> to be written.</param>
         /// <param name="exception">An exception to be logged.</param>
+        [Obsolete("Use Trace(String, Exception) method instead.")]
         public void TraceException([Localizable(false)] string message, Exception exception)
         {
-            if (this.IsTraceEnabled)
-            {
-                this.WriteToTargets(LogLevel.Trace, message, exception);
-            }
+            this.Trace(message, exception); 
         }
 
         /// <summary>
@@ -501,6 +514,19 @@ namespace NLog
         }
 
         /// <summary>
+        /// Writes the diagnostic message and exception at the <c>Trace</c> level.
+        /// </summary>
+        /// <param name="message">A <see langword="string" /> to be written.</param>
+        /// <param name="exception">An exception to be logged.</param>
+        public void Trace([Localizable(false)] string message, Exception exception)
+        {
+            if (this.IsTraceEnabled)
+            {
+                this.WriteToTargets(LogLevel.Trace, message, exception);
+            }
+        }
+
+        /// <summary>
         /// Writes the diagnostic message at the <c>Trace</c> level using the specified parameter and formatting it with the supplied format provider.
         /// </summary>
         /// <typeparam name="TArgument">The type of the argument.</typeparam>
@@ -530,7 +556,7 @@ namespace NLog
                 var exceptionCandidate = argument as Exception;
                 if (exceptionCandidate != null)
                 {
-                    this.TraceException(message, exceptionCandidate);
+                    this.Trace(message, exceptionCandidate);
                     return;
                 }
 
@@ -666,12 +692,10 @@ namespace NLog
         /// </summary>
         /// <param name="message">A <see langword="string" /> to be written.</param>
         /// <param name="exception">An exception to be logged.</param>
+        [Obsolete("Use Debug(String, Exception) method instead.")]
         public void DebugException([Localizable(false)] string message, Exception exception)
         {
-            if (this.IsDebugEnabled)
-            {
-                this.WriteToTargets(LogLevel.Debug, message, exception);
-            }
+            this.Debug(message, exception);
         }
 
         /// <summary>
@@ -715,6 +739,19 @@ namespace NLog
         }
 
         /// <summary>
+        /// Writes the diagnostic message and exception at the <c>Debug</c> level.
+        /// </summary>
+        /// <param name="message">A <see langword="string" /> to be written.</param>
+        /// <param name="exception">An exception to be logged.</param>
+        public void Debug([Localizable(false)] string message, Exception exception)
+        {
+            if (this.IsDebugEnabled)
+            {
+                this.WriteToTargets(LogLevel.Debug, message, exception);
+            }
+        }
+
+        /// <summary>
         /// Writes the diagnostic message at the <c>Debug</c> level using the specified parameter and formatting it with the supplied format provider.
         /// </summary>
         /// <typeparam name="TArgument">The type of the argument.</typeparam>
@@ -744,7 +781,7 @@ namespace NLog
                 var exceptionCandidate = argument as Exception;
                 if (exceptionCandidate != null)
                 {
-                    this.DebugException(message, exceptionCandidate);
+                    this.Debug(message, exceptionCandidate);
                     return;
                 }
 
@@ -880,12 +917,10 @@ namespace NLog
         /// </summary>
         /// <param name="message">A <see langword="string" /> to be written.</param>
         /// <param name="exception">An exception to be logged.</param>
+        [Obsolete("Use Info(String, Exception) method instead.")]
         public void InfoException([Localizable(false)] string message, Exception exception)
         {
-            if (this.IsInfoEnabled)
-            {
-                this.WriteToTargets(LogLevel.Info, message, exception);
-            }
+            this.Info(message, exception);
         }
 
         /// <summary>
@@ -929,6 +964,19 @@ namespace NLog
         }
 
         /// <summary>
+        /// Writes the diagnostic message and exception at the <c>Info</c> level.
+        /// </summary>
+        /// <param name="message">A <see langword="string" /> to be written.</param>
+        /// <param name="exception">An exception to be logged.</param>
+        public void Info([Localizable(false)] string message, Exception exception)
+        {
+            if (this.IsInfoEnabled)
+            {
+                this.WriteToTargets(LogLevel.Info, message, exception);
+            }
+        }
+
+        /// <summary>
         /// Writes the diagnostic message at the <c>Info</c> level using the specified parameter and formatting it with the supplied format provider.
         /// </summary>
         /// <typeparam name="TArgument">The type of the argument.</typeparam>
@@ -958,7 +1006,7 @@ namespace NLog
                 var exceptionCandidate = argument as Exception;
                 if (exceptionCandidate != null)
                 {
-                    this.InfoException(message, exceptionCandidate);
+                    this.Info(message, exceptionCandidate);
                     return;
                 }
 
@@ -1094,12 +1142,10 @@ namespace NLog
         /// </summary>
         /// <param name="message">A <see langword="string" /> to be written.</param>
         /// <param name="exception">An exception to be logged.</param>
+        [Obsolete("Use Warn(String, Exception) method instead.")]
         public void WarnException([Localizable(false)] string message, Exception exception)
         {
-            if (this.IsWarnEnabled)
-            {
-                this.WriteToTargets(LogLevel.Warn, message, exception);
-            }
+            this.Warn(message, exception);
         }
 
         /// <summary>
@@ -1143,6 +1189,19 @@ namespace NLog
         }
 
         /// <summary>
+        /// Writes the diagnostic message and exception at the <c>Warn</c> level.
+        /// </summary>
+        /// <param name="message">A <see langword="string" /> to be written.</param>
+        /// <param name="exception">An exception to be logged.</param>
+        public void Warn([Localizable(false)] string message, Exception exception)
+        {
+            if (this.IsWarnEnabled)
+            {
+                this.WriteToTargets(LogLevel.Warn, message, exception);
+            }
+        }
+
+        /// <summary>
         /// Writes the diagnostic message at the <c>Warn</c> level using the specified parameter and formatting it with the supplied format provider.
         /// </summary>
         /// <typeparam name="TArgument">The type of the argument.</typeparam>
@@ -1172,7 +1231,7 @@ namespace NLog
                 var exceptionCandidate = argument as Exception;
                 if (exceptionCandidate != null)
                 {
-                    this.WarnException(message, exceptionCandidate);
+                    this.Warn(message, exceptionCandidate);
                     return;
                 }
 
@@ -1310,10 +1369,7 @@ namespace NLog
         /// <param name="exception">An exception to be logged.</param>
         public void ErrorException([Localizable(false)] string message, Exception exception)
         {
-            if (this.IsErrorEnabled)
-            {
-                this.WriteToTargets(LogLevel.Error, message, exception);
-            }
+            this.Error(message, exception);
         }
 
         /// <summary>
@@ -1357,6 +1413,19 @@ namespace NLog
         }
 
         /// <summary>
+        /// Writes the diagnostic message and exception at the <c>Error</c> level.
+        /// </summary>
+        /// <param name="message">A <see langword="string" /> to be written.</param>
+        /// <param name="exception">An exception to be logged.</param>
+        public void Error([Localizable(false)] string message, Exception exception)
+        {
+            if (this.IsErrorEnabled)
+            {
+                this.WriteToTargets(LogLevel.Error, message, exception);
+            }
+        }
+
+        /// <summary>
         /// Writes the diagnostic message at the <c>Error</c> level using the specified parameter and formatting it with the supplied format provider.
         /// </summary>
         /// <typeparam name="TArgument">The type of the argument.</typeparam>
@@ -1384,7 +1453,7 @@ namespace NLog
             var exceptionCandidate = argument as Exception;
             if (exceptionCandidate != null)
             {
-                this.ErrorException(message, exceptionCandidate);
+                this.Error(message, exceptionCandidate);
                 return;
             }
 
@@ -1522,12 +1591,10 @@ namespace NLog
         /// </summary>
         /// <param name="message">A <see langword="string" /> to be written.</param>
         /// <param name="exception">An exception to be logged.</param>
+        [Obsolete("Use Fatal(String, Exception) method instead.")]
         public void FatalException([Localizable(false)] string message, Exception exception)
         {
-            if (this.IsFatalEnabled)
-            {
-                this.WriteToTargets(LogLevel.Fatal, message, exception);
-            }
+            this.Fatal(message, exception);
         }
 
         /// <summary>
@@ -1571,6 +1638,19 @@ namespace NLog
         }
 
         /// <summary>
+        /// Writes the diagnostic message and exception at the <c>Fatal</c> level.
+        /// </summary>
+        /// <param name="message">A <see langword="string" /> to be written.</param>
+        /// <param name="exception">An exception to be logged.</param>
+        public void Fatal([Localizable(false)] string message, Exception exception)
+        {
+            if (this.IsFatalEnabled)
+            {
+                this.WriteToTargets(LogLevel.Fatal, message, exception);
+            }
+        }
+
+        /// <summary>
         /// Writes the diagnostic message at the <c>Fatal</c> level using the specified parameter and formatting it with the supplied format provider.
         /// </summary>
         /// <typeparam name="TArgument">The type of the argument.</typeparam>
@@ -1600,7 +1680,7 @@ namespace NLog
                 var exceptionCandidate = argument as Exception;
                 if (exceptionCandidate != null)
                 {
-                    this.FatalException(message, exceptionCandidate);
+                    this.Fatal(message, exceptionCandidate);
                     return;
                 }
 
@@ -1683,7 +1763,108 @@ namespace NLog
         #endregion
 
         // end of generated code
-        internal void Initialize(string name, LoggerConfiguration loggerConfiguration, LogFactory factory)
+
+        /// <summary>
+        /// Runs action. If the action throws, the exception is logged at <c>Error</c> level. Exception is not propagated outside of this method.
+        /// </summary>
+        /// <param name="action">Action to execute.</param>
+        public void Swallow(Action action)
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception e)
+            {
+                Error(e);
+            }
+        }
+
+        /// <summary>
+        /// Runs the provided function and returns its result. If exception is thrown, it is logged at <c>Error</c> level.
+        /// Exception is not propagated outside of this method. Fallback value is returned instead.
+        /// </summary>
+        /// <typeparam name="T">Return type of the provided function.</typeparam>
+        /// <param name="func">Function to run.</param>
+        /// <returns>Result returned by the provided function or fallback value in case of exception.</returns>
+        public T Swallow<T>(Func<T> func)
+        {
+	        return Swallow(func, default(T));
+        }
+
+		/// <summary>
+		/// Runs the provided function and returns its result. If exception is thrown, it is logged at <c>Error</c> level.
+		/// Exception is not propagated outside of this method. Fallback value is returned instead.
+		/// </summary>
+		/// <typeparam name="T">Return type of the provided function.</typeparam>
+		/// <param name="func">Function to run.</param>
+		/// <param name="fallback">Fallback value to return in case of exception. Defaults to default value of type T.</param>
+		/// <returns>Result returned by the provided function or fallback value in case of exception.</returns>
+		public T Swallow<T>(Func<T> func, T fallback)
+        {
+            try
+            {
+                return func();
+            }
+            catch (Exception e)
+            {
+                Error(e);
+                return fallback;
+            }
+        }
+
+#if ASYNC_SUPPORTED
+        /// <summary>
+        /// Runs async action. If the action throws, the exception is logged at <c>Error</c> level. Exception is not propagated outside of this method.
+        /// </summary>
+        /// <param name="asyncAction">Async action to execute.</param>
+        public async Task SwallowAsync(Func<Task> asyncAction)
+        {
+	        try
+	        {
+		        await asyncAction();
+	        }
+	        catch (Exception e)
+	        {
+		        Error(e);
+	        }
+        }
+
+        /// <summary>
+        /// Runs the provided async function and returns its result. If exception is thrown, it is logged at <c>Error</c> level.
+        /// Exception is not propagated outside of this method. Fallback value is returned instead.
+        /// </summary>
+        /// <typeparam name="T">Return type of the provided function.</typeparam>
+        /// <param name="asyncFunc">Async function to run.</param>
+        /// <returns>Result returned by the provided function or fallback value in case of exception.</returns>
+        public async Task<T> SwallowAsync<T>(Func<Task<T>> asyncFunc)
+        {
+	        return await SwallowAsync(asyncFunc, default(T));
+        }
+
+        /// <summary>
+        /// Runs the provided async function and returns its result. If exception is thrown, it is logged at <c>Error</c> level.
+        /// Exception is not propagated outside of this method. Fallback value is returned instead.
+        /// </summary>
+        /// <typeparam name="T">Return type of the provided function.</typeparam>
+        /// <param name="asyncFunc">Async function to run.</param>
+        /// <param name="fallback">Fallback value to return in case of exception. Defaults to default value of type T.</param>
+        /// <returns>Result returned by the provided function or fallback value in case of exception.</returns>
+        public async Task<T> SwallowAsync<T>(Func<Task<T>> asyncFunc, T fallback)
+        {
+            try
+            {
+                return await asyncFunc();
+            }
+            catch (Exception e)
+            {
+                Error(e);
+                return fallback;
+            }
+        }
+#endif
+
+		internal void Initialize(string name, LoggerConfiguration loggerConfiguration, LogFactory factory)
         {
             this.Name = name;
             this.Factory = factory;
@@ -1693,6 +1874,14 @@ namespace NLog
         internal void WriteToTargets(LogLevel level, IFormatProvider formatProvider, [Localizable(false)] string message, object[] args)
         {
             LoggerImpl.Write(this.loggerType, this.GetTargetsForLevel(level), LogEventInfo.Create(level, this.Name, formatProvider, message, args), this.Factory);
+        }
+
+        internal void WriteToTargets(LogLevel level, IFormatProvider formatProvider, [Localizable(false)] string message)
+        {
+            // please note that this overload calls the overload of LogEventInfo.Create with object[] parameter on purpose -
+            // to avoid unnecessary string.Format (in case of calling Create(LogLevel, string, IFormatProvider, object))
+            var logEvent = LogEventInfo.Create(level, this.Name, formatProvider, message, (object[])null);
+            LoggerImpl.Write(this.loggerType, this.GetTargetsForLevel(level), logEvent, this.Factory);
         }
 
         internal void WriteToTargets<T>(LogLevel level, IFormatProvider formatProvider, T value)

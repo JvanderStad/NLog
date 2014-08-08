@@ -89,6 +89,7 @@
     <Compile Include="Filters\WhenEqualTests.cs" />
     <Compile Include="Filters\WhenNotContainsTests.cs" />
     <Compile Include="Filters\WhenNotEqualTests.cs" />
+    <Compile Include="Fluent\LogBuilderTests.cs" />
     <Compile Include="GetLoggerTests.cs" />
     <Compile Include="Internal\NetworkSenders\TcpNetworkSenderTests.cs" />
     <Compile Include="LayoutRenderers\AppSettingTests.cs" />
@@ -115,12 +116,14 @@
     <Compile Include="LayoutRenderers\RegistryTests.cs" />
     <Compile Include="LayoutRenderers\Rot13Tests.cs" />
     <Compile Include="LayoutRenderers\ShortDateTests.cs" />
+    <Compile Include="LayoutRenderers\SpecialFolderTests.cs" />
     <Compile Include="LayoutRenderers\ThreadNameTests.cs" />
     <Compile Include="LayoutRenderers\TimeTests.cs" />
     <Compile Include="LayoutRenderers\Wrappers\CachedTests.cs" />
     <Compile Include="LayoutRenderers\Wrappers\FileSystemNormalizeTests.cs" />
     <Compile Include="LayoutRenderers\Wrappers\JsonEncodeTests.cs" />
     <Compile Include="LayoutRenderers\Wrappers\OnExceptionTests.cs" />
+    <Compile Include="LayoutRenderers\Wrappers\ReplaceTests.cs" />
     <Compile Include="LayoutRenderers\Wrappers\TrimWhiteSpaceTests.cs" />
     <Compile Include="LayoutRenderers\Wrappers\WhenEmptyTests.cs" />
     <Compile Include="LayoutRenderers\Wrappers\WhenTests.cs" />
@@ -137,7 +140,6 @@
     <Compile Include="LogReceiverService\LogReceiverServiceTests.cs" />
     <Compile Include="NLogTestBase.cs" />
     <Compile Include="NLogTraceListenerTests.cs" />
-    <Compile Include="NUnitAdapter.cs" />
     <Compile Include="ProcessRunner.cs" />
     <Compile Include="RegressionTests.cs" />
     <Compile Include="RoutingTests.cs" />
@@ -145,6 +147,7 @@
     <Compile Include="Targets\ConcurrentFileTargetTests.cs" />
     <Compile Include="Targets\ConsoleTargetTests.cs" />
     <Compile Include="Targets\DatabaseTargetTests.cs" />
+    <Compile Include="Targets\EventLogTargetTests.cs" />
     <Compile Include="Targets\FileTargetTests.cs" />
     <Compile Include="Targets\LogReceiverWebServiceTargetTests.cs" />
     <Compile Include="Targets\MailTargetTests.cs" />

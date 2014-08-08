@@ -38,6 +38,9 @@ namespace NLog.UnitTests
     using System;
     using System.Globalization;
     using NLog.Config;
+#if ASYNC_SUPPORTED
+    using System.Threading.Tasks;
+#endif
     using Xunit;
 
     public class LoggerTests : NLogTestBase
@@ -171,7 +174,13 @@ namespace NLog.UnitTests
                 logger.Trace(CultureInfo.InvariantCulture, "message{0}", (decimal)2.5);
                 if (enabled == 1) AssertDebugLastMessage("debug", "message2.5");
 
+#pragma warning disable 0618
+                // Obsolete method requires testing until removed.
                 logger.TraceException("message", new Exception("test"));
+                if (enabled == 1) AssertDebugLastMessage("debug", "message");
+#pragma warning restore 0618
+
+                logger.Trace("message", new Exception("test"));
                 if (enabled == 1) AssertDebugLastMessage("debug", "message");
 
                 logger.Trace(delegate { return "message from lambda"; });
@@ -311,8 +320,11 @@ namespace NLog.UnitTests
                 logger.Debug(CultureInfo.InvariantCulture, "message{0}", (decimal)2.5);
                 if (enabled == 1) AssertDebugLastMessage("debug", "message2.5");
 
+#pragma warning disable 0618
+                // Obsolete method requires testing until completely removed.
                 logger.DebugException("message", new Exception("test"));
                 if (enabled == 1) AssertDebugLastMessage("debug", "message");
+#pragma warning restore 0618
 
                 logger.Debug(delegate { return "message from lambda"; });
                 if (enabled == 1) AssertDebugLastMessage("debug", "message from lambda");
@@ -451,7 +463,13 @@ namespace NLog.UnitTests
                 logger.Info(CultureInfo.InvariantCulture, "message{0}", (decimal)2.5);
                 if (enabled == 1) AssertDebugLastMessage("debug", "message2.5");
 
+#pragma warning disable 0618
+                // Obsolete method requires testing until removed.
                 logger.InfoException("message", new Exception("test"));
+                if (enabled == 1) AssertDebugLastMessage("debug", "message");
+#pragma warning restore 0618
+
+                logger.Info("message", new Exception("test"));
                 if (enabled == 1) AssertDebugLastMessage("debug", "message");
 
                 logger.Info(delegate { return "message from lambda"; });
@@ -591,7 +609,13 @@ namespace NLog.UnitTests
                 logger.Warn(CultureInfo.InvariantCulture, "message{0}", (decimal)2.5);
                 if (enabled == 1) AssertDebugLastMessage("debug", "message2.5");
 
+#pragma warning disable 0618
+                // Obsolete method requires testing until removed.
                 logger.WarnException("message", new Exception("test"));
+                if (enabled == 1) AssertDebugLastMessage("debug", "message");
+#pragma warning restore 0618
+
+                logger.Warn("message", new Exception("test"));
                 if (enabled == 1) AssertDebugLastMessage("debug", "message");
 
                 logger.Warn(delegate { return "message from lambda"; });
@@ -731,7 +755,13 @@ namespace NLog.UnitTests
                 logger.Error(CultureInfo.InvariantCulture, "message{0}", (decimal)2.5);
                 if (enabled == 1) AssertDebugLastMessage("debug", "message2.5");
 
+#pragma warning disable 0618
+                // Obsolete method requires testing until completely removed.
                 logger.ErrorException("message", new Exception("test"));
+                if (enabled == 1) AssertDebugLastMessage("debug", "message");
+#pragma warning restore 0618
+
+                logger.Error("message", new Exception("test"));
                 if (enabled == 1) AssertDebugLastMessage("debug", "message");
 
                 logger.Error(delegate { return "message from lambda"; });
@@ -871,7 +901,13 @@ namespace NLog.UnitTests
                 logger.Fatal(CultureInfo.InvariantCulture, "message{0}", (decimal)2.5);
                 if (enabled == 1) AssertDebugLastMessage("debug", "message2.5");
 
+#pragma warning disable 0618
+                // Obsolete method requires testing until removed.
                 logger.FatalException("message", new Exception("test"));
+                if (enabled == 1) AssertDebugLastMessage("debug", "message");
+#pragma warning restore 0618
+
+                logger.Fatal("message", new Exception("test"));
                 if (enabled == 1) AssertDebugLastMessage("debug", "message");
 
                 logger.Fatal(delegate { return "message from lambda"; });
@@ -1015,8 +1051,14 @@ namespace NLog.UnitTests
                     logger.Log(level, CultureInfo.InvariantCulture, "message{0}", (decimal)2.5);
                     if (enabled == 1) AssertDebugLastMessage("debug", "message2.5");
 
+                    logger.Log(level, "message", new Exception("test"));
+                    if (enabled == 1) AssertDebugLastMessage("debug", "message");
+
+#pragma warning disable 0618
+                    // Obsolete method requires testing until removed.
                     logger.LogException(level, "message", new Exception("test"));
                     if (enabled == 1) AssertDebugLastMessage("debug", "message");
+#pragma warning restore 0618
 
                     logger.Log(level, delegate { return "message from lambda"; });
                     if (enabled == 1) AssertDebugLastMessage("debug", "message from lambda");
@@ -1025,6 +1067,58 @@ namespace NLog.UnitTests
                         AssertDebugCounter("debug", 0);
                 }
             }
+        }
+
+        [Fact]
+        public void SwallowTest()
+        {
+            LogManager.Configuration = CreateConfigurationFromString(@"
+                <nlog>
+                    <targets><target name='debug' type='Debug' layout='${message}' /></targets>
+                    <rules>
+                        <logger name='*' levels='Error' writeTo='debug' />
+                    </rules>
+                </nlog>");
+            Logger logger = LogManager.GetLogger("A");
+            bool warningFix = true;
+            
+            bool executed = false;
+            logger.Swallow(() => executed = true);
+            Assert.True(executed);
+
+            Assert.Equal(1, logger.Swallow(() => 1));
+            Assert.Equal(1, logger.Swallow(() => 1, 2));
+
+#if ASYNC_SUPPORTED
+            executed = false;
+            logger.SwallowAsync(async () => { await Task.Delay(20); executed = true; }).Wait();
+            Assert.True(executed);
+
+            Assert.Equal(1, logger.SwallowAsync(async () => { await Task.Delay(20); return 1; }).Result);
+            Assert.Equal(1, logger.SwallowAsync(async () => { await Task.Delay(20); return 1; }, 2).Result);
+#endif
+
+            AssertDebugCounter("debug", 0);
+
+            logger.Swallow(() => { throw new InvalidOperationException("Test message 1"); });
+            AssertDebugLastMessageContains("debug", "Test message 1");
+
+            Assert.Equal(0, logger.Swallow(() => { if (warningFix) throw new InvalidOperationException("Test message 2"); return 1; }));
+            AssertDebugLastMessageContains("debug", "Test message 2");
+            
+            Assert.Equal(2, logger.Swallow(() => { if (warningFix) throw new InvalidOperationException("Test message 3"); return 1; }, 2));
+            AssertDebugLastMessageContains("debug", "Test message 3");
+
+#if ASYNC_SUPPORTED
+            logger.SwallowAsync(async () => { await Task.Delay(20); throw new InvalidOperationException("Test message 4"); }).Wait();
+            AssertDebugLastMessageContains("debug", "Test message 4");
+
+            Assert.Equal(0, logger.SwallowAsync(async () => { await Task.Delay(20); if (warningFix) throw new InvalidOperationException("Test message 5"); return 1; }).Result);
+            AssertDebugLastMessageContains("debug", "Test message 5");
+
+            Assert.Equal(2, logger.SwallowAsync(async () => { await Task.Delay(20); if (warningFix) throw new InvalidOperationException("Test message 6"); return 1; }, 2).Result);
+            AssertDebugLastMessageContains("debug", "Test message 6");
+#endif
         }
 
         [Fact]
